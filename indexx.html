@@ -1,0 +1,43 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <title>Cliente EcoMarket - Entregable</title>
+</head>
+<body>
+    <h1>Revisando Petición HTTP...</h1>
+<script>
+    // Tu URL de Beeceptor con la ruta exacta de la regla
+    const API_URL = 'https://reto-4-ia.free.beeceptor.com/api/productos';
+
+    async function obtenerProductos() {
+        try {
+            console.log("Iniciando petición...");
+            
+            const respuesta = await fetch(API_URL, {
+                method: 'GET',
+                headers: {
+                    'X-Client-Version': '1.0', // Este es el header personalizado que pide el reto
+                    'Accept': 'application/json'
+                }
+            });
+
+            if (!respuesta.ok) {
+                throw new Error(`Error en servidor: ${respuesta.status}`);
+            }
+
+            const datos = await respuesta.json();
+            
+            console.log("✅ ¡Éxito! Datos de EcoMarket recibidos:");
+            console.table(datos);
+
+        } catch (error) {
+            console.error("❌ Fallo en la comunicación:", error.message);
+        }
+    }
+
+    obtenerProductos();
+</script>
+</script>
+</body>
+</html>
