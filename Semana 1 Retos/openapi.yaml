@@ -1,0 +1,272 @@
+# ------------------------------------------------------------------------------
+# DOCUMENTACIÓN DE MEJORAS DE ARQUITECTURA (V1.1.0)
+# ------------------------------------------------------------------------------
+# Se han implementado 2 mejoras críticas sobre el MVP original para asegurar
+# la estabilidad y usabilidad durante la demo:
+#
+# 1. Paginación (limit/offset):
+#    - Por qué: Previene problemas de rendimiento y latencia si la base de datos
+#      crece. Evita sobrecargar el cliente móvil/web descargando miles de items.
+#    - Implementación: Parámetros query 'limit' (max 100) y 'offset'.
+#
+# 2. Búsqueda por Texto Libre (q):
+#    - Por qué: Mejora drásticamente la UX. Los usuarios prefieren buscar
+#      "mermelada" antes que filtrar por categorías complejas. Permite
+#      flexibilidad para buscar en nombre y descripción simultáneamente.
+#    - Implementación: Parámetro query 'q' opcional en el GET.
+# ------------------------------------------------------------------------------
+
+openapi: 3.0.3
+info:
+  title: EcoMarket API
+  description: API para la plataforma de conexión entre productores locales y consumidores.
+  version: 1.1.0
+  contact:
+    name: Equipo de Arquitectura EcoMarket
+
+servers:
+  - url: https://api.ecomarket.com/v1
+    description: Servidor de Producción
+  - url: http://localhost:8080/v1
+    description: Servidor Local (Demo)
+
+paths:
+  /productos:
+    get:
+      summary: Listar productos disponibles
+      description: |
+        Obtiene una lista de productos con soporte para paginación, búsqueda por texto y filtros.
+      tags:
+        - Productos
+      parameters:
+        # --- MEJORA 2: Búsqueda por texto ---
+        - name: q
+          in: query
+          description: Término de búsqueda libre (busca coincidencias en nombre o descripción).
+          required: false
+          schema:
+            type: string
+            minLength: 1
+            example: "tomates"
+        
+        # --- Filtros originales ---
+        - name: categoria
+          in: query
+          description: Filtra productos por categoría específica.
+          required: false
+          schema:
+            $ref: '#/components/schemas/CategoriaEnum'
+        - name: productor_id
+          in: query
+          description: Filtra productos de un productor específico (UUID).
+          required: false
+          schema:
+            type: string
+            format: uuid
+
+        # --- MEJORA 1: Paginación ---
+        - name: limit
+          in: query
+          description: Cantidad máxima de productos a devolver (Default 20, Max 100).
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+            minimum: 1
+        - name: offset
+          in: query
+          description: Cantidad de registros a saltar para la paginación.
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+
+      responses:
+        '200':
+          description: Lista de productos obtenida exitosamente.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProductoResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+    post:
+      summary: Crear un nuevo producto
+      description: |
+        Registra un nuevo producto en la plataforma. Requiere autenticación Bearer (JWT).
+      tags:
+        - Productos
+      security:
+        - bearerAuth: []
+      requestBody:
+        description: Datos del producto a crear.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductoInput'
+      responses:
+        '201':
+          description: Producto creado exitosamente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductoResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /productos/{id}:
+    get:
+      summary: Ver detalle de un producto
+      description: Obtiene la información completa de un producto por su ID único.
+      tags:
+        - Productos
+      parameters:
+        - name: id
+          in: path
+          description: ID único del producto (UUID).
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Detalle del producto encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductoResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    # Enum reutilizable para consistencia
+    CategoriaEnum:
+      type: string
+      enum:
+        - frutas
+        - verduras
+        - lacteos
+        - miel
+        - conservas
+      example: miel
+
+    # Esquema para crear (Input del cliente)
+    ProductoInput:
+      type: object
+      required:
+        - nombre
+        - descripcion
+        - precio
+        - categoria
+        - productor_id
+        - disponible
+      properties:
+        nombre:
+          type: string
+          minLength: 3
+          maxLength: 100
+          example: "Miel de Abeja Orgánica"
+        descripcion:
+          type: string
+          maxLength: 500
+          example: "Miel pura recolectada en la sierra, sin aditivos."
+        precio:
+          type: number
+          format: float
+          minimum: 0.01
+          description: Precio unitario con máximo 2 decimales.
+          example: 15.50
+        categoria:
+          $ref: '#/components/schemas/CategoriaEnum'
+        productor_id:
+          type: string
+          format: uuid
+          description: ID del productor que vende el artículo.
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        disponible:
+          type: boolean
+          default: true
+          example: true
+
+    # Esquema de respuesta (Incluye ID y Timestamp)
+    ProductoResponse:
+      allOf:
+        - $ref: '#/components/schemas/ProductoInput'
+        - type: object
+          required:
+            - id
+            - creado_en
+          properties:
+            id:
+              type: string
+              format: uuid
+              readOnly: true
+              example: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
+            creado_en:
+              type: string
+              format: date-time
+              readOnly: true
+              example: "2023-10-27T10:00:00Z"
+
+    # Esquema de Error Estandarizado
+    Error:
+      type: object
+      properties:
+        codigo:
+          type: string
+          example: "INVALID_PARAM"
+        mensaje:
+          type: string
+          example: "El parámetro 'limit' no puede ser negativo."
+        detalles:
+          type: array
+          items:
+            type: string
+
+  responses:
+    BadRequest:
+      description: Solicitud incorrecta (validación fallida).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            paginacion_invalida:
+              value:
+                codigo: "INVALID_PAGINATION"
+                mensaje: "El valor de 'limit' excede el máximo permitido (100)."
+    
+    Unauthorized:
+      description: No autorizado (Falta token o es inválido).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            codigo: "AUTH_REQUIRED"
+            mensaje: "Se requiere header Authorization Bearer."
+
+    NotFound:
+      description: Recurso no encontrado.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            codigo: "PRODUCT_NOT_FOUND"
+            mensaje: "No se encontró ningún producto con el ID proporcionado."
