@@ -1,0 +1,70 @@
+Código Corregido (Implementación)
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <title>Cliente EcoMarket - Entregable</title>
+</head>
+<body>
+    <h1>Revisando Petición HTTP...</h1>
+<script>
+    const API_URL = 'https://reto-4-ia.free.beeceptor.com/api/productos';
+
+    async function obtenerProductos() {
+        // [MEJORA] Implementación de AbortController para Timeout (5 segundos)
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+        try {
+            console.log("Iniciando petición...");
+            
+            const respuesta = await fetch(API_URL, {
+                method: 'GET',
+                headers: {
+                    'X-Client-Version': '1.0', 
+                    'Accept': 'application/json'
+                },
+                signal: controller.signal // [MEJORA] Vinculamos la señal de abortar
+            });
+
+            // Limpiamos el timeout si la respuesta llega a tiempo
+            clearTimeout(timeoutId);
+
+            // [CORRECCIÓN CRÍTICA] Validación de Content-Type antes de parsear JSON
+            // Evita crash si el servidor devuelve HTML (ej. error 500 de Nginx)
+            const contentType = respuesta.headers.get("content-type");
+            let datos;
+            
+            if (contentType && contentType.includes("application/json")) {
+                datos = await respuesta.json();
+            } else {
+                // Si no es JSON, leemos texto para no romper el flujo
+                const texto = await respuesta.text(); 
+                throw new Error(`Formato de respuesta no válido (esperaba JSON): ${texto.substring(0, 30)}...`);
+            }
+
+            // [MEJORA] Lectura del cuerpo del error del servidor
+            if (!respuesta.ok) {
+                const mensajeBackend = datos?.error || datos?.message || 'Sin detalles';
+                throw new Error(`Error ${respuesta.status}: ${mensajeBackend}`);
+            }
+            
+            console.log("✅ ¡Éxito! Datos de EcoMarket recibidos:");
+            console.table(datos);
+
+        } catch (error) {
+            // [MEJORA] Manejo específico de error por Timeout
+            if (error.name === 'AbortError') {
+                console.error("❌ Error: La petición tardó demasiado (Timeout).");
+            } else {
+                console.error("❌ Fallo en la comunicación:", error.message);
+            }
+        } finally {
+            clearTimeout(timeoutId); // Aseguramos limpieza de recursos
+        }
+    }
+
+    obtenerProductos();
+// [CORRECCIÓN CRÍTICA] Se eliminó la etiqueta </script> duplicada que existía aquí
+</script>
+</body>
+</html>
