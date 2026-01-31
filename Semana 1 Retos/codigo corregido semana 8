@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cliente EcoMarket - Resiliencia Probadada</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; line-height: 1.6; }
+        .status-container { border: 1px solid #ccc; padding: 15px; border-radius: 8px; background-color: #f9f9f9; }
+        .error { color: #d93025; font-weight: bold; }
+        .success { color: #188038; font-weight: bold; }
+        .loading { color: #1a73e8; }
+    </style>
+</head>
+<body>
+    <h1>Panel de Control EcoMarket</h1>
+    <div class="status-container">
+        <p id="status-text">Estado: Esperando comando...</p>
+        <button onclick="obtenerProductos()">Ejecutar Petición de Prueba</button>
+        <pre id="output" style="margin-top: 15px; background: #eee; padding: 10px; overflow-x: auto;"></pre>
+    </div>
+
+<script>
+    // URL de tu Mock Server en Beeceptor
+    const API_URL = 'https://retos-ia.free.beeceptor.com/api/productos';
+
+    async function obtenerProductos() {
+        const statusEl = document.getElementById('status-text');
+        const outputEl = document.getElementById('output');
+        
+        statusEl.className = 'loading';
+        statusEl.innerText = "Estado: Iniciando petición...";
+        outputEl.innerText = "";
+        console.log("Iniciando petición a Beeceptor...");
+
+        // [MEJORA] Implementación de AbortController para Escenario de Timeout (5 segundos)
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+        try {
+            const respuesta = await fetch(API_URL, {
+                method: 'GET',
+                headers: {
+                    'X-Client-Version': '1.0', 
+                    'Accept': 'application/json'
+                },
+                signal: controller.signal // Vinculamos la señal de abortar
+            });
+
+            // Limpiamos el timeout si el servidor respondió antes de los 5s
+            clearTimeout(timeoutId);
+
+            // [MEJORA] Validación de Content-Type para Escenario de Formato Inesperado (HTML/Text)
+            const contentType = respuesta.headers.get("content-type");
+            let datos;
+            
+            if (contentType && contentType.includes("application/json")) {
+                datos = await respuesta.json();
+            } else {
+                // Si el servidor envía HTML (ej. error de Nginx) o texto plano, evitamos el crash
+                const textoPlano = await respuesta.text(); 
+                throw new Error(`Formato no válido (esperaba JSON). Recibido: "${textoPlano.substring(0, 40)}..."`);
+            }
+
+            // [MEJORA] Manejo de errores lógicos del servidor (404, 500, etc.)
+            if (!respuesta.ok) {
+                const mensajeError = datos?.error || datos?.message || 'Error desconocido';
+                throw new Error(`Servidor respondió con código ${respuesta.status}: ${mensajeError}`);
+            }
+            
+            // Si todo sale bien
+            statusEl.className = 'success';
+            statusEl.innerText = "✅ ¡Éxito! Datos recibidos correctamente.";
+            outputEl.innerText = JSON.stringify(datos, null, 2);
+            console.log("Datos recibidos:", datos);
+
+        } catch (error) {
+            statusEl.className = 'error';
+            
+            // [MEJORA] Identificación específica del fallo para el reporte de caos
+            if (error.name === 'AbortError') {
+                statusEl.innerText = "❌ Error: La petición tardó demasiado (Timeout).";
+                console.error("Fallo por Timeout detectado.");
+            } else {
+                statusEl.innerText = `❌ Fallo en la comunicación: ${error.message}`;
+                console.error("Fallo detectado:", error.message);
+            }
+        } finally {
+            // Aseguramos que el timeout se limpie siempre para liberar memoria
+            clearTimeout(timeoutId);
+        }
+    }
+</script>
+</body>
+</html>
