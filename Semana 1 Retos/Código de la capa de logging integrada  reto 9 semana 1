@@ -1,0 +1,78 @@
+Código de la Capa de Logging Integrada
+A continuación se presenta el código del Wrapper de Logging implementado.
+Este módulo intercepta todas las peticiones HTTP (fetch), 
+calcula métricas de rendimiento y clasifica los eventos por niveles de severidad antes de enviarlos a la consola.
+/**
+ * Módulo de Observabilidad para EcoMarket
+ * Soporta niveles: DEBUG, INFO, WARN, ERROR
+ */
+const Logger = {
+    levels: { DEBUG: 0, INFO: 1, WARN: 2, ERROR: 3 },
+    
+    // Generación de Timestamp ISO 8601
+    getTimestamp: () => new Date().toISOString(),
+
+    // Sanitización de Headers (Privacidad)
+    sanitizeHeaders: (headers) => {
+        const clean = { ...headers };
+        if (clean['Authorization']) clean['Authorization'] = 'Bearer [OFUSCADO]';
+        return clean;
+    },
+
+    // Motor de emisión de logs
+    emit: (level, message, meta = {}) => {
+        const entry = {
+            timestamp: Logger.getTimestamp(),
+            level: level,
+            message: message,
+            ...meta
+        };
+
+        // Estilos visuales para consola
+        const styles = {
+            DEBUG: 'color: gray',
+            INFO: 'color: #4caf50; font-weight: bold',
+            WARN: 'color: #ff9800; font-weight: bold',
+            ERROR: 'color: #f44336; font-weight: bold'
+        };
+
+        console.log(`%c[${level}] ${message}`, styles[level], entry);
+    }
+};
+
+/**
+ * Decorador para fetch que inyecta observabilidad
+ */
+async function fetchConLogging(url, options = {}) {
+    const startTime = performance.now();
+    const method = options.method || 'GET';
+    
+    // Log nivel DEBUG: Inicio de transacción
+    Logger.emit('DEBUG', `Iniciando ${method} ${url}`, {
+        url, method, headers: Logger.sanitizeHeaders(options.headers || {})
+    });
+
+    try {
+        const response = await fetch(url, options);
+        const duration = Math.round(performance.now() - startTime);
+        const metaData = { url, method, status: response.status, duration_ms: duration };
+
+        // Lógica de clasificación de niveles
+        if (!response.ok) {
+            Logger.emit('ERROR', `Fallo HTTP ${response.status}`, metaData);
+        } else if (duration > 2000) {
+            Logger.emit('WARN', `Respuesta lenta detectada (${duration}ms)`, metaData);
+        } else {
+            Logger.emit('INFO', `Petición exitosa`, metaData);
+        }
+        return response;
+
+    } catch (error) {
+        // Log nivel ERROR: Fallos de red críticos
+        const duration = Math.round(performance.now() - startTime);
+        Logger.emit('ERROR', `Error de Red Crítico: ${error.message}`, {
+            url, method, duration_ms: duration, stack: error.stack
+        });
+        throw error;
+    }
+}
