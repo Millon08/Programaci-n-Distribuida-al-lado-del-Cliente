@@ -1,0 +1,159 @@
+openapi: 3.0.3
+info:
+  title: EcoMarket API
+  version: 1.0.0
+  description: API para gestión de mercado ecológico.
+paths:
+  # --- RECURSO: PRODUCTOS ---
+  /products:
+    get:
+      summary: Listar y buscar productos
+      parameters:
+        - in: query
+          name: name
+          schema:
+            type: string
+          description: Filtrar productos por nombre (búsqueda parcial)
+      responses:
+        '200':
+          description: Lista de productos obtenida
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Product'
+    post:
+      summary: Crear nuevo producto
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductInput'
+      responses:
+        '201':
+          description: Producto creado exitosamente
+
+  /products/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: integer
+    get:
+      summary: Obtener detalle de un producto
+      responses:
+        '200':
+          description: Detalle encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '404':
+          description: Producto no encontrado
+    patch:
+      summary: Actualizar parcialmente (ej. solo precio)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                price:
+                  type: number
+                  description: Nuevo precio
+                stock:
+                  type: integer
+                  description: Nuevo stock
+      responses:
+        '200':
+          description: Producto actualizado correctamente
+    delete:
+      summary: Eliminar producto
+      responses:
+        '204':
+          description: Producto eliminado (No Content)
+
+  # --- RECURSO: PRODUCTORES ---
+  /producers/{id}:
+    delete:
+      summary: Eliminar productor
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Productor eliminado
+        '409':
+          description: Conflicto - El productor tiene productos activos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # --- RELACIÓN ANIDADA ---
+  /producers/{id}/products:
+    get:
+      summary: Obtener todos los productos de un productor específico
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Lista de productos del productor
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Product'
+
+components:
+  schemas:
+    Product:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        price:
+          type: number
+        producerId:
+          type: integer
+    
+    ProductInput:
+      type: object
+      required:
+        - name
+        - price
+        - producerId
+      properties:
+        name:
+          type: string
+        price:
+          type: number
+        producerId:
+          type: integer
+
+    ErrorResponse:
+      type: object
+      properties:
+        code:
+          type: string
+          example: "DEPENDENT_RESOURCES_EXIST"
+        message:
+          type: string
+          example: "No se puede eliminar el productor porque tiene productos asociados."
+        action:
+          type: string
+          example: "Elimine o reasigne los productos antes de continuar."
