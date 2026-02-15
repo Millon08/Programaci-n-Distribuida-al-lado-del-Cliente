@@ -3,7 +3,7 @@ ADR: Registro de Decisiones de Arquitectura - Cliente EcoMarket
 
 Fecha: 14/02/2026
 Estado: Aprobado
-Autor: Desarrollador Backend (Tu Nombre)
+Autor: Desarrollador Backend (Jose Emiliano)
 
 INTRODUCCIÓN
 ------------
@@ -74,5 +74,6 @@ Empaquetar todo en una clase `ClienteEcoMarket` permitiría:
 1. Inicializar el `URLBuilder` una sola vez en el constructor `__init__`.
 2. Mantener una sesión de `requests.Session()` abierta para mejorar el rendimiento.
 3. Configurar el timeout en un solo lugar.
+
 
 Esta refactorización haría el código más mantenible a largo plazo.
