@@ -1,0 +1,37 @@
+REPORTE DE SEGURIDAD: URLBuilder para EcoMarket
+===============================================
+
+1. Problema Identificado
+------------------------
+La construcción manual de URLs mediante f-strings (ej: f"{base}/{id}") es vulnerable porque confía ciegamente en la entrada del usuario. Si un atacante manipula los datos de entrada, puede alterar la estructura de la URL y engañar al servidor.
+
+2. Solución Implementada: URLBuilder
+------------------------------------
+Se ha desarrollado la clase URLBuilder utilizando la librería estándar `urllib.parse`. Esta clase actúa como intermediario higiénico entre los datos del usuario y la petición HTTP.
+
+3. Ataques Prevenidos
+---------------------
+
+A) Path Traversal (Navegación de Directorios)
+   - Ataque: Un usuario envía un ID como "../../etc/passwd" para intentar salir de la carpeta de la API y acceder a archivos del sistema.
+   - Defensa: URLBuilder utiliza `urllib.parse.quote()`.
+   - Resultado: La entrada "../../" se convierte en "..%2F..%2F". El servidor web interpreta esto como un nombre de archivo literal extraño, no como una instrucción de "subir directorio".
+
+B) Query Parameter Injection (Inyección de Parámetros)
+   - Ataque: Un usuario busca "miel&admin=true". En una URL normal, el "&" le dice al servidor "aquí empieza otro parámetro".
+   - Defensa: URLBuilder utiliza `urllib.parse.urlencode()`.
+   - Resultado: El "&" se codifica como "%26". El servidor entiende que "admin=true" es parte del texto de búsqueda, no un comando administrativo.
+
+C) Malformación por Caracteres Especiales
+   - Problema: Espacios, tildes (á, é) o emojis en las URLs pueden causar errores 400 Bad Request si no se manejan.
+   - Solución: Se codifican automáticamente (ej. espacio -> "+"), asegurando compatibilidad universal.
+
+4. Limitaciones (Lo que NO previene)
+------------------------------------
+- No previene ataques XSS (Cross-Site Scripting) si la respuesta del servidor se muestra en un navegador sin escapar.
+- No previene SQL Injection si el servidor backend toma el ID limpio y lo mete directo a una base de datos sin usar consultas preparadas.
+- No valida si el ID realmente existe, solo que tenga un formato seguro para viajar por HTTP.
+
+Conclusión
+----------
+URLBuilder es la primera línea de defensa indispensable para cualquier cliente HTTP robusto en Python.
