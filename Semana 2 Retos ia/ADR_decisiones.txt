@@ -1,0 +1,78 @@
+ADR: Registro de Decisiones de Arquitectura - Cliente EcoMarket
+===============================================================
+
+Fecha: 14/02/2026
+Estado: Aprobado
+Autor: Desarrollador Backend (Tu Nombre)
+
+INTRODUCCIÓN
+------------
+Este documento registra las decisiones de diseño tomadas durante la construcción del cliente HTTP para la API de EcoMarket. El objetivo fue crear un cliente funcional, educativo y robusto.
+
+---------------------------------------------------------------
+DECISIÓN 1: Estilo de Programación (Funciones vs. Clases)
+---------------------------------------------------------------
+* Contexto:
+  Necesitábamos implementar métodos CRUD (Crear, Leer, Actualizar, Borrar) para interactuar con la API. Se evaluó si agrupar todo en una clase `EcoMarketClient` o usar funciones sueltas.
+
+* Decisión:
+  Se optó por usar **Funciones Independientes** (Paradigma Procedural).
+
+* Alternativas Rechazadas:
+  - Programación Orientada a Objetos (Clases): Se descartó para esta etapa inicial para evitar la complejidad de manejar `self`, constructores e instanciación.
+
+* Consecuencias:
+  (+) Positivas: El código es extremadamente fácil de leer y testear unitariamente. Menos código "boilerplate".
+  (-) Negativas: Si el cliente crece, tendremos que pasar la `base_url` a cada función manualmente o usar variables globales, lo cual es menos limpio que tenerlo como atributo de clase.
+
+---------------------------------------------------------------
+DECISIÓN 2: Estrategia de Validación (Manual vs. Librerías)
+---------------------------------------------------------------
+* Contexto:
+  Los datos que entran y salen de la API deben ser correctos (precios positivos, tipos de datos, etc.).
+
+* Decisión:
+  Se optó por **Validación Manual** (uso de `if/else` y `isinstance`) en un módulo `validadores.py`.
+
+* Alternativas Rechazadas:
+  - Pydantic / Marshmallow: Librerías populares que automatizan esto.
+
+* Justificación:
+  Se eligió hacerlo a mano para fines educativos, para entender explícitamente "qué" se está validando y tener control total sobre los mensajes de error sin agregar dependencias externas pesadas al proyecto.
+
+* Consecuencias:
+  (+) Positivas: Cero dependencias externas adicionales. Control total del flujo.
+  (-) Negativas: El código es más verboso (más largo) y propenso a errores humanos si se agregan muchos campos nuevos.
+
+---------------------------------------------------------------
+DECISIÓN 3: Manejo de Errores de Red (Retries y Timeouts)
+---------------------------------------------------------------
+* Contexto:
+  Las redes fallan. Necesitábamos decidir qué hace el cliente si el servidor tarda mucho o parpadea.
+
+* Decisión:
+  Se optó por un **Timeout Fijo (10s)** y **Sin Reintentos Automáticos**.
+
+* Alternativas Rechazadas:
+  - Librerías de Resiliencia (Tenacity) o HTTPAdapters con `max_retries`.
+
+* Justificación:
+  Mantener la simplicidad del MVP (Producto Mínimo Viable). Se priorizó que el programa falle rápido y avise al usuario en lugar de quedarse colgado intentando reconectar.
+
+* Consecuencias:
+  (+) Positivas: Comportamiento predecible; el script no se cuelga indefinidamente.
+  (-) Negativas: El cliente es frágil ante micro-cortes de internet. Si falla una vez, se pierde la operación.
+
+---------------------------------------------------------------
+REFLEXIÓN FINAL: ¿Qué cambiaría en la versión 2.0?
+---------------------------------------------------------------
+Después de revisar la arquitectura, la decisión que cambiaría primero sería la **DECISIÓN 1 (Funciones vs Clases)**.
+
+¿Por qué?
+Aunque las funciones son simples, ahora que hemos agregado el `URLBuilder` y configuraciones comunes (como headers y timeouts), estamos repitiendo código o pasando muchos argumentos.
+Empaquetar todo en una clase `ClienteEcoMarket` permitiría:
+1. Inicializar el `URLBuilder` una sola vez en el constructor `__init__`.
+2. Mantener una sesión de `requests.Session()` abierta para mejorar el rendimiento.
+3. Configurar el timeout en un solo lugar.
+
+Esta refactorización haría el código más mantenible a largo plazo.
