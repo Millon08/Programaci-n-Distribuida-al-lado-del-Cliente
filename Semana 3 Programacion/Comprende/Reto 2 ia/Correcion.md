@@ -1,0 +1,2 @@
+Que Corregi?
+Antes de este ejercicio, mi error conceptual era pensar que al escribir session.get(), la petición HTTP se disparaba en ese mismo instante hacia el servidor. Ahora comprendo que esas líneas solo crean objetos 'awaitables'. Las peticiones reales no viajan por la red hasta que no las inyectamos en el Event Loop mediante await o asyncio.gather().
