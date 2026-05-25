@@ -1,0 +1,44 @@
+=== INICIANDO DEMO: 10 EVENTOS MIXTOS ===
+2026-05-25 08:15:00,000 - INFO - [PRECIO] Actualización detectada: ID 1 a $19.99
+2026-05-25 08:15:00,105 - INFO - [PEDIDO] Estado del pedido PED-404 -> EN_PREPARACION
+2026-05-25 08:15:00,210 - INFO - [PRECIO] Actualización detectada: ID 2 a $45.00
+2026-05-25 08:15:00,315 - WARNING - [STOCK] ¡Crítico! Producto 5 queda(n) 2 unidades.
+2026-05-25 08:15:00,420 - INFO - [PEDIDO] Estado del pedido PED-404 -> ENVIADO
+2026-05-25 08:15:00,525 - ERROR - [ALERTA] Sistema: Mantenimiento a las 03:00 AM
+2026-05-25 08:15:00,630 - INFO - [PRECIO] Actualización detectada: ID 1 a $18.99
+2026-05-25 08:15:00,735 - WARNING - [STOCK] ¡Crítico! Producto 9 queda(n) 1 unidades.
+2026-05-25 08:15:00,840 - INFO - [PEDIDO] Estado del pedido PED-405 -> RECIBIDO
+2026-05-25 08:15:00,945 - INFO - [PRECIO] Actualización detectada: ID 3 a $5.50
+
+=== INICIANDO AUDITORIA: 4 ESCENARIOS DE FALLO ===
+
+--- Escenario 1: JSON Malformado ---
+2026-05-25 08:15:01,000 - ERROR - Error de parseo JSON en evento 'precio_actualizado'. Payload malformado: {"producto_id": 1, "nuevo_precio": }
+
+--- Escenario 2: Evento Desconocido (no registrado) ---
+2026-05-25 08:15:01,005 - WARNING - No hay handler registrado para el evento tipo: evento_fantasma. Evento descartado.
+
+--- Escenario 3: Excepción lanzada por el handler ---
+2026-05-25 08:15:01,010 - ERROR - [ALERTA] Sistema: CRASH
+2026-05-25 08:15:01,015 - ERROR - El handler para 'alerta_sistema' falló: Fallo inducido por el payload de la alerta
+
+--- Escenario 4: Evento sin payload (Vacio) ---
+2026-05-25 08:15:01,020 - WARNING - Evento o payload vacío ignorado.
+
+--- EJECUCION COMPLETADA ---
+
+==============================================
+COMENTARIOS SOBRE LOS ESCENARIOS Y CORRECCIONES APLICADAS
+==============================================
+
+- Escenario 1 fallido (JSON Malformado) + corrección aplicada: 
+  El `json.loads` original rompía el bucle entero si recibía un payload malformado. Se aplicó un bloque `try-except json.JSONDecodeError` alrededor de la conversión JSON. Ahora la aplicación loguea el error y descarta el evento, pero la conexión SSE (y el hilo principal) siguen vivos.
+
+- Escenario 2 fallido (Evento Desconocido) + corrección aplicada:
+  Originalmente un evento no mapeado lanzaba `KeyError` o fallaba al llamar a `None`. Se corrigió validando `if not handler:` antes de invocar la función, logueando un WARNING y permitiendo que la ejecución continúe tranquilamente.
+
+- Escenario 3 fallido (Excepción del Handler) + corrección aplicada:
+  Si un handler en la capa de negocio fallaba (ej: un bug en handle_alerta), la propagación de la excepción destruía al router. Se encapsuló la llamada `handler(payload)` dentro de un bloque genérico `except Exception as e:` en `EventRouter`, aislando las fallas de la capa de negocio de la capa de enrutamiento.
+
+- Escenario 4 fallido (Evento vacío) + corrección aplicada:
+  Un evento vacío (ej. ping del servidor para keep-alive) causaba excepciones por tratar de leer un JSON vacío. Se corrigió añadiendo una validación temprana `if not event_type or not payload_str:` retornando antes de procesar cualquier cosa.
