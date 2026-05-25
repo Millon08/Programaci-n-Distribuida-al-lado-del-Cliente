@@ -1,0 +1,17 @@
+# Arquitectura del Cliente Robusto (Profundiza)
+
+ClienteRobusto
+|
+|-- get("/api/ecomarket/precios")
+|     |-> CircuitBreaker(name="Precios", umbral=5)
+|
+|-- post("/api/ecomarket/pedidos")
+|     |-> CircuitBreaker(name="Pedidos", umbral=2, timeout=30)
+|
+|-- post("/api/auth/login")
+      |-> CircuitBreaker(name="Auth", umbral=10)
+
+## Decisiones:
+1. **¿Dónde se crean?**: Se inicializan como un diccionario de breakers dentro de ClienteRobusto en su constructor: `self.breakers = {"precios": CircuitBreaker(...), "pedidos": CircuitBreaker(...)}`.
+2. **¿Cómo se seleccionan?**: El cliente enruta la petición según el path base.
+3. **Peticiones de Auth**: Sí tienen su propio breaker, pero con un umbral más alto (ej. 10 fallos) porque una falla intermitente en auth bloquea absolutamente toda la aplicación. Aislar el breaker de Auth (Bulkhead pattern) asegura que si el servicio de Precios cae, el usuario aún pueda desloguearse o consultar otras APIs.
