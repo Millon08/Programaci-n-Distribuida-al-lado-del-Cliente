@@ -1,0 +1,21 @@
+2026-05-16 22:50:00 - Servicio de Polling iniciado.
+
+--- ESCENARIO A: El servidor tarda 15s en responder (timeout cliente 10s) ---
+2026-05-16 22:50:10 - [MONITOR ERROR] Timeout alcanzado
+2026-05-16 22:50:10 - [Timeout] Servidor no responde. Nuevo intervalo: 10.0s
+
+--- ESCENARIO B: El servidor responde con HTML en lugar de JSON ---
+2026-05-16 22:50:20 - [MONITOR ERROR] Formato de respuesta incorrecto (no es JSON)
+
+--- ESCENARIO C: Un observador lanza una excepción no capturada ---
+2026-05-16 22:50:25 - Error en observador para evento 'datos_actualizados': 'NoneType' object is not iterable
+2026-05-16 22:50:25 - [UI] Datos actualizados. Total elementos: 5
+(Nota: El error de un observador fue atrapado por el try/except de ServicioPolling y logueado, la ejecución de otros observadores o del ciclo principal continuó normalmente)
+
+--- ESCENARIO D: El servidor devuelve 200 pero el campo "productos" es null ---
+2026-05-16 22:50:30 - [MONITOR ERROR] Formato de datos no válido, se esperaba una lista de productos.
+
+--- PRUEBA DE DESACOPLAMIENTO ---
+# PRUEBA DE DESACOPLAMIENTO:
+# Agregué observador_4 y lo quité sin modificar ServicioPolling. ✓
+# ServicioPolling no tiene referencia directa a ningún observador. ✓
