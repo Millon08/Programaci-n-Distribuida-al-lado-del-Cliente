@@ -1,0 +1,44 @@
+=== INICIANDO DEMO DE RESILIENCIA (10 PETICIONES) ===
+
+--- Petición 1 --- [Estado del CB: CERRADO]
+      [Mock Network] Recibiendo petición con token: eyJhbGciOi...
+   ❌ ERROR: 503 Service Unavailable (CB Estado: CERRADO)
+
+--- Petición 2 --- [Estado del CB: CERRADO]
+      [Mock Network] Recibiendo petición con token: eyJhbGciOi...
+   ❌ ERROR: 503 Service Unavailable (CB Estado: CERRADO)
+
+--- Petición 3 --- [Estado del CB: CERRADO]
+      [Mock Network] Recibiendo petición con token: eyJhbGciOi...
+   ❌ ERROR: 503 Service Unavailable (CB Estado: ABIERTO)
+
+--- Petición 4 --- [Estado del CB: ABIERTO]
+   ❌ ERROR: CircuitBreaker en estado ABIERTO: Petición rechazada rápidamente. (CB Estado: ABIERTO)
+
+   ⏳ Esperando 1.6 segundos para que el circuito pase a Semi-Abierto...
+
+--- Petición 5 --- [Estado del CB: ABIERTO]
+      [Mock Network] Recibiendo petición con token: eyJhbGciOi...
+   ✅ ÉXITO: Respuesta exitosa de la API (CB Estado: CERRADO)
+
+--- Petición 6 --- [Estado del CB: CERRADO]
+      [Mock Network] Recibiendo petición con token: eyJhbGciOi...
+   ✅ ÉXITO: Respuesta exitosa de la API (CB Estado: CERRADO)
+
+--- Petición 7 --- [Estado del CB: CERRADO]
+      [Mock Network] Recibiendo petición con token: eyJhbGciOi...
+   ✅ ÉXITO: Respuesta exitosa de la API (CB Estado: CERRADO)
+
+--- Petición 8 --- [Estado del CB: CERRADO]
+      [Mock Network] Recibiendo petición con token: eyJhbGciOi...
+   ✅ ÉXITO: Respuesta exitosa de la API (CB Estado: CERRADO)
+
+--- Petición 9 --- [Estado del CB: CERRADO]
+      [Mock Network] Recibiendo petición con token: eyJhbGciOi...
+   ✅ ÉXITO: Respuesta exitosa de la API (CB Estado: CERRADO)
+
+--- Petición 10 --- [Estado del CB: CERRADO]
+      [Mock Network] Recibiendo petición con token: eyJhbGciOi...
+   ✅ ÉXITO: Respuesta exitosa de la API (CB Estado: CERRADO)
+
+=== FIN DE LA DEMO ===
